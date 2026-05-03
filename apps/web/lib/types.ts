@@ -7,11 +7,13 @@ export type AgentEvent = {
   role: string;
   status: "thinking" | "challenging" | "refining" | "complete" | "approval";
   message: string;
+  engine: string;
 };
 
 export type AgentRunResponse = {
   runId: string;
   summary: string;
+  engine: string;
   events: AgentEvent[];
   plan: {
     title: string;
@@ -21,5 +23,5 @@ export type AgentRunResponse = {
     matching: string;
     approvals: string[];
   };
+  approvalsRequired: boolean;
 };
-

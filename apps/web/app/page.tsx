@@ -88,6 +88,7 @@ export default function Home() {
             <div>
               <p className="eyebrow">Live coordination</p>
               <h2>{run ? run.summary : "No run yet"}</h2>
+              {run ? <p className="small muted">Engine: {run.engine}</p> : null}
             </div>
             <span className="status">{run ? "complete" : "waiting"}</span>
           </div>
@@ -101,6 +102,7 @@ export default function Home() {
                 </div>
                 <p className="small muted">{item.role}</p>
                 <p>{item.message}</p>
+                <span className="pill">{item.engine}</span>
               </article>
             ))}
             {!run ? (
@@ -135,4 +137,3 @@ export default function Home() {
     </main>
   );
 }
-

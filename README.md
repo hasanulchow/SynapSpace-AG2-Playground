@@ -41,14 +41,53 @@ uvicorn synapspace_agents.api:app --reload --port 8000
 
 The web app will call `http://localhost:8000/run`.
 
-## AG2 Notes
+AG2 requires Python `>=3.10,<3.14`. If your machine only has Python 3.14, use Docker:
 
-The service is structured for AG2:
+```bash
+OPENAI_API_KEY="your-key" docker compose up --build agents
+```
 
-- Round-robin proposer/challenger/refiner style collaboration.
-- Sequential event-building pipeline.
-- Human approval checkpoint at the end.
-- Deterministic fallback so the demo runs even without model credentials.
+## AG2 Implementation
 
-To enable live AG2/OpenAI behavior, add your model provider variables in `apps/agents/.env`.
+The service now has a real AG2 runtime path and a deterministic fallback:
 
+- Uses `autogen.ConversableAgent`.
+- Uses AG2 `LLMConfig`.
+- Starts each specialist step with `initiate_chat`.
+- Runs a sequential specialist pipeline inspired by AG2 Playground patterns.
+- Ends with a human approval checkpoint.
+- Falls back to deterministic orchestration if AG2 or model credentials are missing.
+
+To enable live AG2/OpenAI behavior:
+
+```bash
+cd apps/agents
+cp .env.example .env
+export OPENAI_API_KEY="your-key"
+export AG2_MODEL="gpt-4o-mini"
+uvicorn synapspace_agents.api:app --reload --port 8000
+```
+
+Check the active runtime:
+
+```bash
+curl http://127.0.0.1:8000/capabilities
+```
+
+Expected live runtime with dependencies and key:
+
+```json
+{
+  "ag2Installed": true,
+  "modelConfigured": true,
+  "engine": "ag2-live"
+}
+```
+
+Expected fallback runtime without credentials:
+
+```json
+{
+  "engine": "deterministic-fallback"
+}
+```

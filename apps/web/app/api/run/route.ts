@@ -29,27 +29,32 @@ function localFallback(rawIdea: unknown) {
         agent: "Planner Agent",
         role: "Proposer",
         status: "thinking",
-        message: `Drafted a first event plan from: ${idea}.`
+        message: `Drafted a first event plan from: ${idea}.`,
+        engine: "web-local-fallback"
       },
       {
         agent: "Challenger Agent",
         role: "Critic",
         status: "challenging",
-        message: "Flagged budget, venue availability, audience quality, and approval timing as key risks."
+        message: "Flagged budget, venue availability, audience quality, and approval timing as key risks.",
+        engine: "web-local-fallback"
       },
       {
         agent: "Refiner Agent",
         role: "Experience designer",
         status: "refining",
-        message: "Improved the plan with curated intros, speaker moments, and a smaller approval queue."
+        message: "Improved the plan with curated intros, speaker moments, and a smaller approval queue.",
+        engine: "web-local-fallback"
       },
       {
         agent: "Governance Agent",
         role: "Human approval",
         status: "approval",
-        message: "Prepared final decisions: venue, social audience, budget ceiling, and outreach tone."
+        message: "Prepared final decisions: venue, social audience, budget ceiling, and outreach tone.",
+        engine: "web-local-fallback"
       }
     ],
+    engine: "web-local-fallback",
     plan: {
       title: "Agentic Networking Night",
       audience: "100 qualified founders, builders, and design leaders",
@@ -57,7 +62,7 @@ function localFallback(rawIdea: unknown) {
       marketing: "Intent-based social campaign plus partner community posts",
       matching: "Rank attendee fit and generate warm intro prompts",
       approvals: ["Venue", "Budget", "Audience", "Outreach tone"]
-    }
+    },
+    approvalsRequired: true
   };
 }
-

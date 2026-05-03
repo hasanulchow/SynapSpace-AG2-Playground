@@ -10,6 +10,7 @@ class AgentEvent(BaseModel):
     role: str
     status: str
     message: str
+    engine: str = "deterministic"
 
 
 class EventPlan(BaseModel):
@@ -24,6 +25,14 @@ class EventPlan(BaseModel):
 class RunResponse(BaseModel):
     runId: str
     summary: str
+    engine: str
     events: list[AgentEvent]
     plan: EventPlan
+    approvalsRequired: bool = True
 
+
+class CapabilityResponse(BaseModel):
+    ag2Installed: bool
+    modelConfigured: bool
+    engine: str
+    patterns: list[str]
