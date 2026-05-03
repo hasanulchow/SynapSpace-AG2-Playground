@@ -1,2 +1,1 @@
-"""SynapSpace AG2 Playground agent service."""
-
+"""SynapSpace AG2 beta + AG-UI agent service."""

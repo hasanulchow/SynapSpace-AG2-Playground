@@ -1,23 +1,21 @@
-from __future__ import annotations
-
 from uuid import uuid4
 
-from .models import AgentEvent, EventPlan, RunResponse
 from .ag2_runtime import run_live_ag2, runtime_status
+from .models import AgentEvent, EventPlan, RunResponse
 
 
 def run_event_playground(idea: str) -> RunResponse:
     """Run live AG2 when configured, otherwise keep the demo reliable."""
 
     status = runtime_status()
-    if status.engine == "ag2-live":
+    if status.engine == "ag2-beta-live":
         try:
             return run_live_ag2(idea)
         except Exception:
             # Keep the hackathon demo working even if a provider request fails.
-            return run_deterministic_playground(idea, reason="AG2 live run failed; using fallback")
+            return run_deterministic_playground(idea, reason="AG2 beta live run failed; using fallback")
 
-    return run_deterministic_playground(idea, reason="AG2 or model credentials not configured")
+    return run_deterministic_playground(idea, reason="AG2 beta or model credentials not configured")
 
 
 def run_deterministic_playground(idea: str, reason: str) -> RunResponse:

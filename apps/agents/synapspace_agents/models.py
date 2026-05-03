@@ -34,5 +34,6 @@ class RunResponse(BaseModel):
 class CapabilityResponse(BaseModel):
     ag2Installed: bool
     modelConfigured: bool
+    agUiAvailable: bool
     engine: str
     patterns: list[str]

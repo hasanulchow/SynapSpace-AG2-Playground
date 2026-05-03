@@ -1,6 +1,6 @@
-# SynapSpace AG2 Playground
+# SynapSpace AG2 Beta Playground
 
-A hackathon-ready multi-agent event operating system built around AG2 Playground concepts.
+A hackathon-ready multi-agent event operating system built around AG2 beta and AG-UI.
 
 Users enter an event idea and watch specialized agents coordinate:
 
@@ -47,13 +47,15 @@ AG2 requires Python `>=3.10,<3.14`. If your machine only has Python 3.14, use Do
 OPENAI_API_KEY="your-key" docker compose up --build agents
 ```
 
-## AG2 Implementation
+## AG2 Beta + AG-UI Implementation
 
 The service now has a real AG2 runtime path and a deterministic fallback:
 
-- Uses `autogen.ConversableAgent`.
-- Uses AG2 `LLMConfig`.
-- Starts each specialist step with `initiate_chat`.
+- Uses `autogen.beta.Agent`.
+- Uses `autogen.beta.config.OpenAIConfig`.
+- Starts each specialist step with async `Agent.ask(...)`.
+- Exposes an AG-UI endpoint at `/ag-ui/chat` using `AGUIStream`.
+- The web app exposes `/api/ag-ui` as a frontend-safe proxy to the AG-UI backend.
 - Runs a sequential specialist pipeline inspired by AG2 Playground patterns.
 - Ends with a human approval checkpoint.
 - Falls back to deterministic orchestration if AG2 or model credentials are missing.
@@ -74,13 +76,23 @@ Check the active runtime:
 curl http://127.0.0.1:8000/capabilities
 ```
 
+Test AG-UI streaming:
+
+```bash
+curl -N -X POST http://127.0.0.1:8000/ag-ui/chat \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"thread_id":"t1","run_id":"r1","messages":[{"id":"m1","role":"user","content":"Plan an AI founder dinner in NYC"}],"state":{},"context":[],"tools":[]}'
+```
+
 Expected live runtime with dependencies and key:
 
 ```json
 {
   "ag2Installed": true,
   "modelConfigured": true,
-  "engine": "ag2-live"
+  "agUiAvailable": true,
+  "engine": "ag2-beta-live"
 }
 ```
 

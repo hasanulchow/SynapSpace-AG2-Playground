@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import asyncio
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -51,99 +50,93 @@ AGENT_SPECS = [
 class RuntimeStatus:
     ag2_installed: bool
     model_configured: bool
+    ag_ui_available: bool
     engine: str
 
 
 def runtime_status() -> RuntimeStatus:
+    ag2_installed = _can_import_ag2_beta()
+    model_configured = bool(os.environ.get("OPENAI_API_KEY"))
+    ag_ui_ready = _can_import_ag_ui() and model_configured
     return RuntimeStatus(
-        ag2_installed=_can_import_ag2(),
-        model_configured=bool(os.environ.get("OPENAI_API_KEY")),
-        engine="ag2-live" if _can_import_ag2() and os.environ.get("OPENAI_API_KEY") else "deterministic-fallback",
+        ag2_installed=ag2_installed,
+        model_configured=model_configured,
+        ag_ui_available=ag_ui_ready,
+        engine="ag2-beta-live" if ag2_installed and model_configured else "deterministic-fallback",
     )
 
 
-def _can_import_ag2() -> bool:
+def _can_import_ag2_beta() -> bool:
     try:
-        import autogen  # noqa: F401
+        from autogen.beta import Agent  # noqa: F401
+        from autogen.beta.config import OpenAIConfig  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+def _can_import_ag_ui() -> bool:
+    try:
+        from autogen.beta.ag_ui import AGUIStream  # noqa: F401
     except Exception:
         return False
     return True
 
 
 def run_live_ag2(idea: str) -> RunResponse:
-    """Run the actual AG2 ConversableAgent workflow.
-
-    This uses AG2's ConversableAgent + initiate_chat flow. It is intentionally
-    sequential for demo legibility: each specialist receives the original event
-    idea plus the prior agents' outputs, then contributes its own result.
-    """
+    """Run the AG2 beta Agent workflow."""
 
     try:
-        from autogen import ConversableAgent, LLMConfig
-    except Exception as exc:  # pragma: no cover - exercised when dependency missing
-        raise RuntimeError("AG2 is not installed. Run: pip install -e apps/agents") from exc
+        from autogen.beta import Agent
+        from autogen.beta.config import OpenAIConfig
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError("AG2 beta is not installed. Run: pip install -e apps/agents") from exc
 
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is required for live AG2 execution")
+        raise RuntimeError("OPENAI_API_KEY is required for live AG2 beta execution")
 
-    model = os.environ.get("AG2_MODEL", "gpt-4o-mini")
-    llm_config = LLMConfig(
-        {
-            "api_type": "openai",
-            "model": model,
-            "api_key": api_key,
-        },
-        cache_seed=None,
+    config = OpenAIConfig(
+        model=os.environ.get("AG2_MODEL", "gpt-4o-mini"),
+        api_key=api_key,
+        streaming=True,
     )
+    return asyncio.run(_run_live_ag2_async(idea, Agent, config))
 
+
+async def _run_live_ag2_async(idea: str, agent_cls: Any, config: Any) -> RunResponse:
     events: list[AgentEvent] = []
     shared_context = f"Original organizer idea: {idea}\n\n"
 
-    with llm_config:
-        user_proxy = ConversableAgent(
-            name="human_approval_proxy",
-            system_message="You represent the organizer. Do not invent approvals; ask agents for concise output.",
-            llm_config=False,
-            human_input_mode="NEVER",
-            default_auto_reply="Continue.",
+    for name, role, instruction, status in AGENT_SPECS:
+        agent = agent_cls(
+            _agent_name(name),
+            prompt=(
+                f"You are {name}, role: {role}. {instruction} "
+                "Reply in 2-4 concise sentences. Do not use markdown tables."
+            ),
+            config=config,
         )
 
-        for name, role, instruction, status in AGENT_SPECS:
-            agent = ConversableAgent(
-                name=_agent_name(name),
-                system_message=(
-                    f"You are {name}, role: {role}. {instruction} "
-                    "Reply in 2-4 concise sentences. Do not use markdown tables."
-                ),
-                human_input_mode="NEVER",
+        reply = await agent.ask(
+            f"{shared_context}\nContribute your specialist update for the SynapSpace event plan."
+        )
+        message = _extract_message(reply)
+        shared_context += f"{name}: {message}\n\n"
+        events.append(
+            AgentEvent(
+                agent=name,
+                role=role,
+                status=status,
+                message=message,
+                engine="ag2-beta-live",
             )
-
-            result = user_proxy.initiate_chat(
-                recipient=agent,
-                message=(
-                    f"{shared_context}\n"
-                    "Contribute your specialist update for the SynapSpace event plan."
-                ),
-                max_turns=1,
-                silent=True,
-            )
-            message = _extract_message(result)
-            shared_context += f"{name}: {message}\n\n"
-            events.append(
-                AgentEvent(
-                    agent=name,
-                    role=role,
-                    status=status,
-                    message=message,
-                    engine="ag2-live",
-                )
-            )
+        )
 
     return RunResponse(
-        runId="ag2-live-run",
-        summary="Live AG2 multi-agent run complete",
-        engine="ag2-live",
+        runId="ag2-beta-live-run",
+        summary="Live AG2 beta multi-agent run complete",
+        engine="ag2-beta-live",
         events=events,
         plan=_plan_from_events(idea, events),
     )
@@ -154,17 +147,13 @@ def _agent_name(label: str) -> str:
 
 
 def _extract_message(result: Any) -> str:
+    body = getattr(result, "body", None)
+    if isinstance(body, str) and body.strip():
+        return body.strip()
+
     summary = getattr(result, "summary", None)
     if isinstance(summary, str) and summary.strip():
         return summary.strip()
-
-    chat_history = getattr(result, "chat_history", None)
-    if isinstance(chat_history, list):
-        for item in reversed(chat_history):
-            if isinstance(item, dict):
-                content = item.get("content")
-                if isinstance(content, str) and content.strip():
-                    return content.strip()
 
     return "Agent completed its step and passed context to the next specialist."
 
@@ -175,7 +164,7 @@ def _plan_from_events(idea: str, events: list[AgentEvent]) -> EventPlan:
     governance = _find_event(events, "Governance Agent")
 
     return EventPlan(
-        title="AG2-orchestrated SynapSpace Event",
+        title="AG2 beta-orchestrated SynapSpace Event",
         audience=f"Qualified audience inferred from: {idea}",
         venue="Venue choice is routed through the Planner and Challenger recommendations.",
         marketing=social.message if social else "Social Agent prepares intent-based launch content.",

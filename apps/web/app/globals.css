@@ -168,6 +168,34 @@ h2 {
   gap: 18px;
 }
 
+.capability-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.capability-strip article {
+  display: grid;
+  gap: 6px;
+  min-height: 106px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 10px 28px rgba(19, 41, 30, 0.05);
+}
+
+.capability-strip strong {
+  font-size: 15px;
+}
+
+.capability-strip span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.42;
+}
+
 .agent-list,
 .event-log,
 .plan-grid {
@@ -249,6 +277,7 @@ h2 {
 
   .hero,
   .workspace,
+  .capability-strip,
   .plan-grid {
     grid-template-columns: 1fr;
   }
@@ -257,4 +286,3 @@ h2 {
     font-size: 38px;
   }
 }
-

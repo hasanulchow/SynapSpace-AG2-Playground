@@ -43,12 +43,12 @@ export default function Home() {
           <p className="eyebrow">SynapSpace AG2 Playground</p>
           <h1>Watch agents turn an event idea into an operating plan.</h1>
           <p className="lede">
-            A live AG2-style playground for multi-agent event orchestration: planner, challenger, refiner,
-            social, matchmaker, and governance agents coordinate while the human approves the final plan.
+            A live AG2 beta playground for multi-agent event orchestration: planner, challenger, refiner,
+            social, matchmaker, and governance agents coordinate while AG-UI exposes the frontend streaming path.
           </p>
           <div className="pill-row">
-            <span className="pill"><Bot size={14} />AG2 multi-agent workflows</span>
-            <span className="pill"><Network size={14} />Round robin and sequential patterns</span>
+            <span className="pill"><Bot size={14} />AG2 beta Agent runtime</span>
+            <span className="pill"><Network size={14} />AG-UI stream endpoint</span>
             <span className="pill"><ShieldCheck size={14} />Human approval checkpoint</span>
           </div>
         </div>
@@ -57,7 +57,7 @@ export default function Home() {
           <div>
             <p className="eyebrow">Event prompt</p>
             <h2>Start a playground run</h2>
-            <p className="small muted">Describe the event. The agents will coordinate a plan and approval queue.</p>
+            <p className="small muted">Describe the event. The beta agents coordinate a plan, and AG-UI is ready for streaming chat clients.</p>
           </div>
           <textarea onChange={(event) => setIdea(event.target.value)} value={idea} />
           <button className="button primary" disabled={loading} type="submit">
@@ -65,6 +65,21 @@ export default function Home() {
             {loading ? "Agents coordinating..." : "Run AG2 agents"}
           </button>
         </form>
+      </section>
+
+      <section className="capability-strip">
+        <article>
+          <strong>AG2 beta runtime</strong>
+          <span>Python service uses `autogen.beta.Agent` and async `Agent.ask(...)` for specialist orchestration.</span>
+        </article>
+        <article>
+          <strong>AG-UI development path</strong>
+          <span>Backend exposes `/ag-ui/chat`; Next.js proxies it through `/api/ag-ui` for streaming clients.</span>
+        </article>
+        <article>
+          <strong>Demo-safe fallback</strong>
+          <span>If AG2 credentials are absent, the product still runs a deterministic judge-friendly workflow.</span>
+        </article>
       </section>
 
       <section className="workspace">
