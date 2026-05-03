@@ -2,9 +2,13 @@ services:
   agents:
     build:
       context: ./apps/agents
+    env_file:
+      - ./apps/agents/.env
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      AG2_MODEL: ${AG2_MODEL:-gpt-4o-mini}
+      AG2_API_KEY: ${AG2_API_KEY:-}
+      AG2_BASE_URL: ${AG2_BASE_URL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      AG2_MODEL: ${AG2_MODEL:-openai/gpt-4o-mini}
     ports:
       - "8000:8000"
-

@@ -2,14 +2,19 @@
 
 A hackathon-ready multi-agent event operating system built around AG2 beta and AG-UI.
 
-Users enter an event idea and watch specialized agents coordinate:
+Users enter an event idea and watch the full 11-agent SynapSpace team coordinate:
 
-- Planner Agent turns the idea into a concrete event plan.
-- Challenger Agent finds risks, gaps, and budget problems.
-- Refiner Agent improves attendee experience.
-- Social Agent creates launch content and market strategy.
-- Matchmaker Agent designs high-value networking.
-- Governance Agent summarizes what needs human approval.
+1. Master Orchestrator builds the dependency graph.
+2. Safety Guardrail reviews risk before external action.
+3. Venue Scout ranks rooms by capacity, budget, and vibe.
+4. Vendor Coordinator handles food, A/V, photo, signage, and setup.
+5. Outreach Agent finds speakers and high-value guests.
+6. Content Agent creates launch copy and reminders.
+7. Marketing Trust Agent invites high-intent people while suppressing spam-risk outreach.
+8. Payments Agent explains revenue and queued payments.
+9. Timeline Agent sequences deadlines and day-of flow.
+10. Attendee Matchmaker designs high-value introductions.
+11. Follow-up Agent turns meetings into next steps.
 
 ## Stack
 
@@ -54,6 +59,7 @@ The service now has a real AG2 runtime path and a deterministic fallback:
 - Uses `autogen.beta.Agent`.
 - Uses `autogen.beta.config.OpenAIConfig`.
 - Starts each specialist step with async `Agent.ask(...)`.
+- Shares a run-scoped context memory across all 11 agents for decisions, risks, handoffs, and timeline entries.
 - Exposes an AG-UI endpoint at `/ag-ui/chat` using `AGUIStream`.
 - The web app exposes `/api/ag-ui` as a frontend-safe proxy to the AG-UI backend.
 - Runs a sequential specialist pipeline inspired by AG2 Playground patterns.
@@ -100,6 +106,20 @@ Expected fallback runtime without credentials:
 
 ```json
 {
-  "engine": "deterministic-fallback"
+  "engine": "deterministic-fallback",
+  "events": [
+    {
+      "agent": "Planner Agent",
+      "status": "thinking",
+      "memoryReads": 1,
+      "memoryWrites": ["plan", "Initial operating plan drafted"]
+    }
+  ],
+  "memory": {
+    "activeBrief": "7 memory entries connect the agent team around: ...",
+    "decisions": ["Initial operating plan drafted"],
+    "risks": ["Budget, venue, audience, and approval risks reviewed"],
+    "handoffs": ["Social campaign should target people already showing event intent"]
+  }
 }
 ```

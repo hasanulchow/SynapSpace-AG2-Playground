@@ -3,44 +3,75 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
+from .context_memory import SharedContextMemory
 from .models import AgentEvent, EventPlan, RunResponse
 
 
 AGENT_SPECS = [
     (
-        "Planner Agent",
-        "Proposer",
-        "Create a practical event operating plan. Include venue, audience, schedule, budget, and success metric.",
+        "Master Orchestrator",
+        "Orchestrator",
+        "Build the event dependency graph, decide which specialist should act next, and surface only organizer decisions.",
         "thinking",
     ),
     (
-        "Challenger Agent",
-        "Critic",
-        "Challenge the plan. Find risks, missing constraints, safety issues, budget gaps, and assumptions.",
+        "Safety Guardrail",
+        "Safety reviewer",
+        "Screen policy, permits, spending risk, outbound communication risk, and anything that needs human review.",
         "challenging",
     ),
     (
-        "Refiner Agent",
-        "Experience designer",
-        "Improve the plan so attendees meet the right people and the organizer has fewer decisions.",
+        "Venue Scout",
+        "Venue specialist",
+        "Find venue options that match capacity, budget, vibe, location, availability, and contract risk.",
         "refining",
     ),
     (
-        "Social Agent",
+        "Vendor Coordinator",
+        "Logistics specialist",
+        "Coordinate food, A/V, photo, signage, setup windows, vendor quotes, and operational tradeoffs.",
+        "refining",
+    ),
+    (
+        "Outreach Agent",
+        "Speaker and guest scout",
+        "Find speakers and guests worth inviting, draft personalized pitches, and sequence follow-ups after approval.",
+        "refining",
+    ),
+    (
+        "Content Agent",
+        "Marketing producer",
+        "Create launch copy, email reminders, partner blurbs, recap content, and platform-specific variants.",
+        "refining",
+    ),
+    (
+        "Marketing Trust Agent",
         "Growth operator",
-        "Create audience targeting, social posts, ad angles, and community-safe outreach strategy.",
+        "Use public social intent, location, availability, and consent signals to invite only people likely to want this event. Suppress broad blasts, spam-like outreach, phishing-like language, unknown-consent targets, and recently-contacted people so AG2 protects site reputation and acquisition cost.",
         "refining",
     ),
     (
-        "Matchmaker Agent",
+        "Payments Agent",
+        "Money operator",
+        "Prepare checkout, reconcile revenue, model platform fees, queue vendor payments, and explain the money flow.",
+        "refining",
+    ),
+    (
+        "Timeline Agent",
+        "Schedule operator",
+        "Coordinate deadlines, reminders, content drops, setup windows, day-of run of show, and delayed decisions.",
+        "refining",
+    ),
+    (
+        "Attendee Matchmaker",
         "Network strategist",
-        "Design attendee matching, intro logic, and follow-up flow for high-value relationships.",
+        "Score attendee fit, explain why each introduction matters, and design warm intro moments.",
         "complete",
     ),
     (
-        "Governance Agent",
-        "Human approval",
-        "Summarize final approvals needed before external actions happen. Keep this short and explicit.",
+        "Follow-up Agent",
+        "Post-event operator",
+        "Turn event conversations into follow-up drafts, action items, CRM exports, and relationship loops.",
         "approval",
     ),
 ]
@@ -56,7 +87,7 @@ class RuntimeStatus:
 
 def runtime_status() -> RuntimeStatus:
     ag2_installed = _can_import_ag2_beta()
-    model_configured = bool(os.environ.get("OPENAI_API_KEY"))
+    model_configured = bool(_api_key())
     ag_ui_ready = _can_import_ag_ui() and model_configured
     return RuntimeStatus(
         ag2_installed=ag2_installed,
@@ -92,37 +123,35 @@ def run_live_ag2(idea: str) -> RunResponse:
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("AG2 beta is not installed. Run: pip install -e apps/agents") from exc
 
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = _api_key()
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required for live AG2 beta execution")
 
-    config = OpenAIConfig(
-        model=os.environ.get("AG2_MODEL", "gpt-4o-mini"),
-        api_key=api_key,
-        streaming=True,
-    )
+    config = _openai_config(OpenAIConfig, api_key)
     return asyncio.run(_run_live_ag2_async(idea, Agent, config))
 
 
 async def _run_live_ag2_async(idea: str, agent_cls: Any, config: Any) -> RunResponse:
     events: list[AgentEvent] = []
-    shared_context = f"Original organizer idea: {idea}\n\n"
+    memory = SharedContextMemory(idea)
 
     for name, role, instruction, status in AGENT_SPECS:
+        memory_reads = memory.read_count()
         agent = agent_cls(
             _agent_name(name),
             prompt=(
                 f"You are {name}, role: {role}. {instruction} "
+                "Read the shared context memory before acting, then add one useful update for the next agent. "
                 "Reply in 2-4 concise sentences. Do not use markdown tables."
             ),
             config=config,
         )
 
         reply = await agent.ask(
-            f"{shared_context}\nContribute your specialist update for the SynapSpace event plan."
+            f"{memory.prompt()}\n\nContribute your specialist update for the SynapSpace event plan."
         )
         message = _extract_message(reply)
-        shared_context += f"{name}: {message}\n\n"
+        memory_writes = memory.record(name, role, message)
         events.append(
             AgentEvent(
                 agent=name,
@@ -130,6 +159,8 @@ async def _run_live_ag2_async(idea: str, agent_cls: Any, config: Any) -> RunResp
                 status=status,
                 message=message,
                 engine="ag2-beta-live",
+                memoryReads=memory_reads,
+                memoryWrites=memory_writes,
             )
         )
 
@@ -139,11 +170,32 @@ async def _run_live_ag2_async(idea: str, agent_cls: Any, config: Any) -> RunResp
         engine="ag2-beta-live",
         events=events,
         plan=_plan_from_events(idea, events),
+        memory=memory.snapshot(),
     )
 
 
 def _agent_name(label: str) -> str:
     return label.lower().replace(" ", "_")
+
+
+def _api_key() -> str | None:
+    return os.environ.get("OPENAI_API_KEY") or os.environ.get("AG2_API_KEY")
+
+
+def _base_url() -> str | None:
+    return os.environ.get("AG2_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
+
+
+def _openai_config(config_cls: Any, api_key: str) -> Any:
+    kwargs = {
+        "model": os.environ.get("AG2_MODEL", "gpt-4o-mini"),
+        "api_key": api_key,
+        "streaming": True,
+    }
+    base_url = _base_url()
+    if base_url:
+        kwargs["base_url"] = base_url
+    return config_cls(**kwargs)
 
 
 def _extract_message(result: Any) -> str:
@@ -159,17 +211,22 @@ def _extract_message(result: Any) -> str:
 
 
 def _plan_from_events(idea: str, events: list[AgentEvent]) -> EventPlan:
-    social = _find_event(events, "Social Agent")
-    matchmaker = _find_event(events, "Matchmaker Agent")
-    governance = _find_event(events, "Governance Agent")
+    venue = _find_event(events, "Venue Scout")
+    content = _find_event(events, "Content Agent")
+    social = _find_event(events, "Marketing Trust Agent")
+    matchmaker = _find_event(events, "Attendee Matchmaker")
+    followup = _find_event(events, "Follow-up Agent")
 
     return EventPlan(
-        title="AG2 beta-orchestrated SynapSpace Event",
+        title="AG2 beta-orchestrated SynapSpace Event OS",
         audience=f"Qualified audience inferred from: {idea}",
-        venue="Venue choice is routed through the Planner and Challenger recommendations.",
-        marketing=social.message if social else "Social Agent prepares intent-based launch content.",
-        matching=matchmaker.message if matchmaker else "Matchmaker Agent designs high-value attendee introductions.",
-        approvals=_approval_list(governance.message if governance else ""),
+        venue=venue.message if venue else "Venue Scout ranks venue options after safety and budget checks.",
+        marketing=(
+            f"{content.message if content else 'Content Agent prepares launch copy.'} "
+            f"{social.message if social else 'Marketing Trust Agent targets expressed event intent without spam risk.'}"
+        ),
+        matching=matchmaker.message if matchmaker else "Attendee Matchmaker designs high-value attendee introductions.",
+        approvals=_approval_list(followup.message if followup else ""),
     )
 
 

@@ -8,6 +8,20 @@ export type AgentEvent = {
   status: "thinking" | "challenging" | "refining" | "complete" | "approval";
   message: string;
   engine: string;
+  memoryReads: number;
+  memoryWrites: string[];
+};
+
+export type ContextMemory = {
+  activeBrief: string;
+  entries: Array<{
+    agent: string;
+    signal: string;
+    content: string;
+  }>;
+  decisions: string[];
+  risks: string[];
+  handoffs: string[];
 };
 
 export type AgentRunResponse = {
@@ -23,5 +37,6 @@ export type AgentRunResponse = {
     matching: string;
     approvals: string[];
   };
+  memory: ContextMemory;
   approvalsRequired: boolean;
 };

@@ -164,13 +164,13 @@ h2 {
 
 .workspace {
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr) 340px;
   gap: 18px;
 }
 
 .capability-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -247,6 +247,71 @@ h2 {
 .event-card {
   display: grid;
   gap: 5px;
+}
+
+.memory-meter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.memory-meter span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #eef8f2;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.memory-panel {
+  align-self: start;
+  display: grid;
+  gap: 14px;
+}
+
+.memory-columns {
+  display: grid;
+  gap: 8px;
+}
+
+.memory-columns article {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdf9;
+}
+
+.memory-columns p {
+  margin-bottom: 6px;
+}
+
+.memory-timeline {
+  display: grid;
+  gap: 8px;
+  max-height: 470px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.memory-timeline article {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.memory-timeline span {
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
 }
 
 .event-top {
